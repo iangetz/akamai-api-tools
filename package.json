@@ -1,0 +1,22 @@
+{
+  "name": "akamai-api-tools",
+  "version": "0.6.0",
+  "description": "Library to facilitate using Akamai {OPEN} APIs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iangetz/akamai-api-tools.git"
+  },
+  "author": "Ian",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iangetz/akamai-api-tools/issues"
+  },
+  "homepage": "https://github.com/iangetz/akamai-api-tools#readme",
+  "dependencies": {
+    "akamai-edgegrid": "^3.4.0"
+  }
+}
