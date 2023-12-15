@@ -194,7 +194,7 @@ class ApiTools {
 		} else {
 			uri += '?accountSwitchKey=';
 		}
-		if('params' in reqObj) {uri += `&params=${reqObj.params}`};
+		if('params' in reqObj) {uri += `&${reqObj.params}`};
 		if('startDate' in reqObj) {uri += `&start=${encodeURIComponent(reqObj.startDate)}`;}
 		if('endDate' in reqObj) {uri += `&end=${encodeURIComponent(reqObj.endDate)}`;}
 		if('interval' in reqObj) {uri += `&interval=${reqObj.interval}`;}
