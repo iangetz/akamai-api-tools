@@ -282,7 +282,15 @@ class ApiTools {
 						data = res;
 					}
 				} else {
-					log.responseCode = error.response.status;
+					if(typeof error != 'undefined' && typeof error.response != 'undefined') {
+						log.responseCode = error.response.status;
+					} else if(typeof error != 'undefined' && typeof error.code != 'undefined') {
+						log.responseCode = error.code;
+					} else {
+						console.debug('CRITICAL ERROR: Unhandled error response'); 
+						console.debug(error);
+						process.exit();
+					}
 				}
 				resolve([log, data]);
 			});
