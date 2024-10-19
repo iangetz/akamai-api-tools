@@ -1,8 +1,10 @@
 const EdgeGrid = require('akamai-edgegrid');
+const {google} = require("googleapis");
 
 class ApiTools {
-	constructor(dotEdgerc) {
+	constructor(dotEdgerc = "", googleSheetsCreds = {}) {
 		this.dotEdgerc = dotEdgerc;
+		this.googleSheetsCreds = googleSheetsCreds;
 	}
 
 	// endDateOffset (int): Days prior to today for end date (e.g. 0 = through midnight today UTC)
@@ -207,32 +209,31 @@ class ApiTools {
 		if('headers' in reqObj) {Object.assign(reqObj.fullHeaders, reqObj.headers)}
 
 		// The actual call to the Akamai {OPEN} API with logic if response status code is not 200
-		let attempts = 0, retries = 10, log = {}, data;
-		while(attempts < retries && log.responseCode !== 200) {
+		let attempts = 0, retries = 10, success = false, log = [], data;
+		while(attempts < retries && !success) {
+			let logElem = {};
 			attempts++;
 			console.log(`Attempt #${attempts} for ${reqObj.path}`);
 
 			// Make API call and capture response time
 			const timerStart = new Date();
-			[log, data] = await this.makeApiCall(reqObj);
+			[logElem, data] = await this.makeApiCall(reqObj);
 			const timerStop = new Date();
-			log.timer = Math.round(Math.abs(timerStop - timerStart));
 
-			if(log.responseCode !== 200) {
-				// If response was not 200, then 'data' variable was never assigned and value is 'undefined'
-				console.log(`No luck (HTTP ${log.responseCode})`);
-
-				if(attempts === retries) {
-					log.error = (`${retries} unsuccessful attempts to Akamai {OPEN} API`);
-					return [log, data];
-				}
-
-				// Wait for 5 seconds before starting next retry
-				await new Promise(r => setTimeout(r, 5000));
+			if(logElem.responseCode === 200) {
+				logElem.timer = Math.round(Math.abs(timerStop - timerStart));
+				success = true; // Exit loop if successful
+			} else {
+				await new Promise(r => setTimeout(r, 5000)); // Wait for 5 seconds before starting next retry
 			}
+			log.push(logElem);
 		}
 
-		return [log, data];
+		if (typeof data === 'undefined') {
+			return [log, ''];
+		} else {
+			return [log, data]
+		}
 	}
 
 	// Internal function, called by getReportData(), that actually makes the API call
@@ -283,9 +284,15 @@ class ApiTools {
 					}
 				} else {
 					if(typeof error != 'undefined' && typeof error.response != 'undefined') {
-						log.responseCode = error.response.status;
+						log = {
+							responseCode: error.response.status,
+							error: `Akamai API call to ${reqObj.uri} failed`
+						};
 					} else if(typeof error != 'undefined' && typeof error.code != 'undefined') {
-						log.responseCode = error.code;
+						log = {
+							responseCode: error.code,
+							error: `Akamai API call to ${reqObj.uri} failed`
+						};
 					} else {
 						console.debug('CRITICAL ERROR: Unhandled error response'); 
 						console.debug(error);
@@ -346,6 +353,73 @@ class ApiTools {
 			default:
 				return undefined;
 		}
+	}
+
+	// Google API supported methods: clear, update, append
+	async gSheets(method, spreadsheetId, range, data = []) {
+		// Google Sheets connection object
+		const auth = new google.auth.GoogleAuth({
+			keyFile: this.googleSheetsCreds,
+			scopes: 'https://www.googleapis.com/auth/spreadsheets',
+		});
+		const client = await auth.getClient();
+		const googleSheets = google.sheets({version: 'v4', auth: client});
+
+		let attempts = 0, retries = 10, success = false, log = [];
+		while (attempts < retries && !success) {
+			let response = '';
+			attempts++;
+			console.log(`Attempt #${attempts} to ${method} Google Sheet ${range}`);
+
+			try {
+				// Make API call and capture response time
+				const timerStart = new Date();
+				switch (method) {
+					case 'clear':
+						response = await googleSheets.spreadsheets.values.clear({
+							spreadsheetId, // ERROR INTENTIONALLY
+							range
+						});
+						break;
+					case 'update':
+						// Ignore IDE warnings that 'await' is not require, it is to capture the response code
+						response = await googleSheets.spreadsheets.values.update({
+							spreadsheetId,
+							range,
+							valueInputOption: 'USER_ENTERED',
+							resource: {values: data}
+						});
+						break;
+					case 'append':
+						// Ignore IDE warnings that 'await' is not require, it is to capture the response code
+						response = await googleSheets.spreadsheets.values.append({
+							spreadsheetId,
+							range,
+							valueInputOption: 'USER_ENTERED',
+							resource: {values: data}
+						});
+						break;
+					default:
+						console.error(`gSheetsUpload method ${method} unrecognized`);
+				}
+				const timerStop = new Date();
+
+				success = true; // Exit loop if successful
+				log.push({
+					responseCode: response.status,
+					length: 1,
+					timer: Math.round(Math.abs(timerStop - timerStart))
+				});
+			} catch (error) {
+				log.push({
+					responseCode: error.code,
+					error: 'Google API call failed'
+				});
+				await new Promise(r => setTimeout(r, 30000)); // Recommended 30 seconds based on Google API error response
+			}
+		}
+
+		return(log);
 	}
 }
 

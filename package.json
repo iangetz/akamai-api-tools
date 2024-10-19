@@ -1,7 +1,7 @@
 {
   "name": "akamai-api-tools",
-  "version": "0.8.0",
-  "description": "Library to facilitate using Akamai {OPEN} APIs",
+  "version": "0.9.0",
+  "description": "Library to facilitate using Akamai {OPEN} APIs and Google Spreadsheet APIs",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/iangetz/akamai-api-tools#readme",
   "dependencies": {
-    "akamai-edgegrid": "^3.4.0"
+    "akamai-edgegrid": "^3.5.1",
+    "googleapis": "^144.0.0"
   }
 }
